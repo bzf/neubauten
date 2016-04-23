@@ -1,0 +1,7 @@
+[package]
+name = "neubauten"
+version = "0.1.0"
+authors = ["André Ligné <hello@bzf.se>"]
+
+[dependencies]
+rustify = { path = "../rustify" }

@@ -1,0 +1,28 @@
+[root]
+name = "neubauten"
+version = "0.1.0"
+dependencies = [
+ "rustify 0.1.0",
+]
+
+[[package]]
+name = "libc"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "openal-rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustify"
+version = "0.1.0"
+dependencies = [
+ "libc 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "openal-rs 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
