@@ -1,0 +1,20 @@
+general:
+  branches:
+    ignore:
+      - gh-pages
+
+dependencies:
+  post:
+    - curl -O https://developer.spotify.com/download/libspotify/libspotify-12.1.51-Linux-x86_64-release.tar.gz
+    - tar -xvzf libspotify-12.1.51-Linux-x86_64-release.tar.gz
+    - sudo mv libspotify-12.1.51-Linux-x86_64-release/lib/libspotify* /usr/local/lib
+    - sudo mv libspotify-12.1.51-Linux-x86_64-release/include/libspotify /usr/local/include
+    - curl -sSf https://static.rust-lang.org/rustup.sh | sh
+    - sudo apt-get install libopenal-dev
+    - cp spotify_key_example.c src/spotify_key.c
+
+test:
+  override:
+    # temporary workaround until cargo#2078 is ready
+    - eval `ssh-agent` && ssh-add /home/ubuntu/.ssh/id_circleci_github && cargo build -v
+    - cargo test
