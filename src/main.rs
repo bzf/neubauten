@@ -12,12 +12,16 @@ extern {
 
 mod configuration;
 mod list;
+mod action;
+mod view;
+
+use view::{NeubautenView};
+use action::{NeubautenAction};
 
 use std::default::Default;
 use std::sync::{Arc, Mutex};
 
 use rustbox::{RustBox};
-use rustbox::Key;
 use rustbox::{Color};
 
 fn get_application_key() -> Vec<u8> {
@@ -26,38 +30,18 @@ fn get_application_key() -> Vec<u8> {
   return slice.to_vec();
 }
 
-enum NeubautenView {
-  PlaylistView(list::ListComponent<rustify::Playlist>),
-  TrackView(usize, rustify::Playlist, list::ListComponent<rustify::Track>),
-}
-
-enum NeubautenAction {
-  NextView(NeubautenView),
-
-  PlayTrack,
-  PlayNextTrack,
-
-  StartReadingCommand,
-  StopReadingCommand,
-  AddCharacterToCommand(char),
-  PopCharacterFromCommand,
-
-  QueueTrack,
-
-  MoveDown,
-  MoveUp,
-
-  Back,
-  Quit,
-
-  Noop,
-}
-
 enum PlaybackTrack {
   QueueTrack(rustify::Track),
 
   /// Contains `playlist_index`, `track_index` and the actual track
   PlaylistTrack(usize, usize, rustify::Track),
+}
+
+fn result_to_option<T, E>(event: Result<T, E>) -> Option<T> {
+  return match event {
+    Ok(e) => Some(e),
+    Err(_) => None,
+  }
 }
 
 fn main() {
@@ -108,41 +92,30 @@ fn main() {
 
   let mut playback_queue: Vec<rustify::Track> = Vec::new();
   let mut current_track: Option<PlaybackTrack> = None;
-  let mut current_filter: Option<String> = None;
-  let mut is_reading_command: bool = false;
 
   // Listen to events
   loop {
+    let mut current_view: NeubautenView = views.pop().unwrap();
+    let mut next_view: Option<NeubautenView> = None;
+
     // Print the current view somehow
     rustbox.clear();
-    print_view(views.last_mut().unwrap(), &current_filter, is_reading_command, &rustbox);
+    print_view(&mut current_view, &rustbox);
     print_status_bar(&current_track, &rustbox);
-    print_command_bar(&current_filter, &rustbox);
     rustbox.present();
 
-    // Wait for a action
-    let action = get_next_action(views.last().unwrap(), &rustbox, &session, is_reading_command, &receiver);
+    // Parse the next action
+    let rustify_event = receiver.try_recv();
+    let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
+    let action = action::next_action(
+      result_to_option(rustbox_event),
+      result_to_option(rustify_event)
+    );
 
     // Process that action
     match action {
-      NeubautenAction::NextView(view) => {
-        current_filter = None;
-        is_reading_command = false;
-
-        views.push(view)
-      },
-      NeubautenAction::Back => {
-        current_filter = None;
-
-        if current_filter.is_some() {
-          current_filter = None;
-          is_reading_command = false;
-        } else if views.len() > 1 {
-          views.pop();
-        }
-      },
-      NeubautenAction::PlayTrack => {
-        match views.last().unwrap() {
+      NeubautenAction::Select => {
+        match &current_view {
           &NeubautenView::TrackView(playlist_index, ref playlist, ref list) => {
             let track_index = list.get_selected_index();
             let track = playlist.track(track_index as i32).unwrap();
@@ -155,9 +128,15 @@ fn main() {
             );
 
             current_track = Some(playlist_track);
-            ()
           },
-          _ => (),
+          &NeubautenView::PlaylistView(ref list) => {
+            let playlist_index = list.get_selected_index();
+            let playlist = session.playlist(playlist_index as i32).unwrap();
+            let tracks = playlist.tracks();
+
+            let next_list = list::ListComponent::new(tracks, height - 2, width - 2);
+            next_view = Some(NeubautenView::TrackView(playlist_index, playlist, next_list));
+          },
         }
       },
       NeubautenAction::PlayNextTrack => {
@@ -201,19 +180,19 @@ fn main() {
         }
       },
       NeubautenAction::MoveUp => {
-        match views.last_mut().unwrap() {
+        match &mut current_view {
           &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_up(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_up(),
         }
       },
       NeubautenAction::MoveDown => {
-        match views.last_mut().unwrap() {
+        match &mut current_view {
           &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_down(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_down(),
         }
       },
       NeubautenAction::QueueTrack => {
-        match views.last_mut().unwrap() {
+        match &mut current_view {
           &mut NeubautenView::TrackView(_, ref playlist, ref mut list) => {
             let track_index = list.get_selected_index();
             let track = playlist.track(track_index as i32).unwrap();
@@ -223,42 +202,31 @@ fn main() {
           _ => (),
         }
       },
-      NeubautenAction::StartReadingCommand => {
-        current_filter = Some("".to_string());
-        is_reading_command = true;
-      },
-      NeubautenAction::StopReadingCommand => {
-        is_reading_command = false;
-      },
-      NeubautenAction::AddCharacterToCommand(character) => {
-        let mut value: String = current_filter.unwrap();
-        value.push(character);
-        current_filter = Some(value);
-      },
-      NeubautenAction::PopCharacterFromCommand => {
-        let mut value: String = current_filter.unwrap();
-
-        if !value.is_empty() {
-          value.pop();
-        }
-
-        current_filter = Some(value);
-      },
       NeubautenAction::Quit => {
         break
       },
-      NeubautenAction::Noop => (),
+      _ => (),
+    }
+
+    if action != NeubautenAction::Back || views.len() == 0 {
+      views.push(current_view);
+    }
+
+    if next_view.is_some() {
+      views.push(next_view.unwrap());
     }
   }
 }
 
-fn print_view(view: &mut NeubautenView, filter: &Option<String>, filter_updated: bool, rustbox: &rustbox::RustBox) {
+fn print_view(view: &mut NeubautenView, rustbox: &rustbox::RustBox) {
+  let current_filter = None;
+
   match view {
     &mut NeubautenView::PlaylistView(ref mut list) => {
-      list.print(&rustbox, 0, 0, filter, filter_updated);
+      list.print(&rustbox, 0, 0, &current_filter, false);
     },
     &mut NeubautenView::TrackView(_, _, ref mut list) => {
-      list.print(&rustbox, 0, 0, filter, filter_updated);
+      list.print(&rustbox, 0, 0, &current_filter, false);
     }
   }
 }
@@ -294,103 +262,4 @@ fn print_status_bar(current_track: &Option<PlaybackTrack>,
   }
 
   rustbox.print(0, y_pos, rustbox::RB_BOLD, Color::White, Color::Cyan, &value);
-}
-
-fn get_next_action(current_view: &NeubautenView,
-                   rustbox: &rustbox::RustBox,
-                   session: &rustify::Session,
-                   reading_command: bool,
-                   rustify_channel: &std::sync::mpsc::Receiver<rustify::Event>) -> NeubautenAction {
-  let height = rustbox.height();
-  let width = rustbox.width();
-
-  // If the rustify channel has pending events, deal with those first
-  let rustify_event = rustify_channel.try_recv();
-  if rustify_event.is_ok() {
-    return match rustify_event.unwrap() {
-      rustify::Event::EndOfTrack => NeubautenAction::PlayNextTrack,
-      _ => NeubautenAction::Noop,
-    };
-  }
-
-  // maybe we should loop and peek for events?
-  let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
-  if rustbox_event.is_ok() {
-    let event = rustbox_event.unwrap();
-
-    if reading_command {
-      match event {
-        rustbox::Event::KeyEvent(key) => {
-          match key {
-            Key::Char(character) => return NeubautenAction::AddCharacterToCommand(character),
-            Key::Backspace => return NeubautenAction::PopCharacterFromCommand,
-            Key::Enter => return NeubautenAction::StopReadingCommand,
-            _ => (),
-          }
-        },
-        _ => (),
-      }
-    }
-
-    return match event {
-      rustbox::Event::KeyEvent(key) => {
-        match key {
-          Key::Enter => {
-            match current_view {
-              &NeubautenView::PlaylistView(ref list) => {
-                let playlist_index = list.get_selected_index();
-                let playlist = session.playlist(playlist_index as i32).unwrap();
-
-                let tracks = playlist.tracks();
-
-                let next_view = NeubautenView::TrackView(
-                  playlist_index,
-                  playlist,
-                  list::ListComponent::new(tracks, height - 1, width),
-                );
-
-                NeubautenAction::NextView(next_view)
-              },
-              &NeubautenView::TrackView(_, _, _) => NeubautenAction::PlayTrack
-            }
-          },
-          Key::Char('j') => NeubautenAction::MoveDown,
-          Key::Char('k') => NeubautenAction::MoveUp,
-          Key::Char('q') => {
-            match current_view {
-              &NeubautenView::TrackView(_, _, _) => NeubautenAction::QueueTrack,
-              _ => NeubautenAction::Noop,
-            }
-          },
-          Key::Char('>') => NeubautenAction::PlayNextTrack,
-          Key::Char('e') => NeubautenAction::Quit,
-          Key::Char('/') => NeubautenAction::StartReadingCommand,
-          Key::Esc => NeubautenAction::Back,
-          _ => {
-            NeubautenAction::Noop
-          }
-        }
-      },
-      _ => {
-        NeubautenAction::Noop
-      },
-    };
-  }
-
-  return NeubautenAction::Noop;
-}
-
-fn print_command_bar(filter: &Option<String>, rustbox: &rustbox::RustBox) {
-  let y_pos = rustbox.height() - 1;
-
-  let command = match filter {
-    &Some(ref f) => {
-      let mut value = "Search: ".to_string();
-      value.push_str(f);
-      value
-    },
-    &None => "".to_string(),
-  };
-
-  rustbox.print(0, y_pos, rustbox::RB_NORMAL, Color::Black, Color::Default, &command);
 }
