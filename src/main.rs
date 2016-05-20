@@ -101,7 +101,7 @@ fn main() {
     // Print the current view somehow
     rustbox.clear();
     print_view(&mut current_view, &rustbox);
-    print_status_bar(&current_track, &rustbox);
+    print_status_bar(&current_track, session.is_playing(), &rustbox);
     rustbox.present();
 
     // Parse the next action
@@ -202,6 +202,10 @@ fn main() {
           _ => (),
         }
       },
+      NeubautenAction::TogglePlayback => {
+        let is_playing = session.is_playing();
+        session.toggle_playback(!is_playing);
+      },
       NeubautenAction::Quit => {
         break
       },
@@ -232,6 +236,7 @@ fn print_view(view: &mut NeubautenView, rustbox: &rustbox::RustBox) {
 }
 
 fn print_status_bar(current_track: &Option<PlaybackTrack>,
+                    playing: bool,
                     rustbox: &rustbox::RustBox) {
   let y_pos = rustbox.height() - 2;
   let width = rustbox.width();
@@ -256,6 +261,9 @@ fn print_status_bar(current_track: &Option<PlaybackTrack>,
 
   let number_of_spaces = width - playback.len();
   let mut value: String = playback.clone();
+  if current_track.is_some() && !playing {
+    value.push_str("[Paused]");
+  }
 
   for _ in 0..number_of_spaces {
     value.push(' ');

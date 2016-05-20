@@ -157,7 +157,7 @@ dependencies = [
 [[package]]
 name = "rustify"
 version = "0.1.0"
-source = "git+https://github.com/bzf/rustify.git#7b735b4a2f65d0fee5cda66758b645d255830bac"
+source = "git+https://github.com/bzf/rustify.git#efd29364fc0791b4536c30da61dd40316daa2a52"
 dependencies = [
  "libc 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "openal-rs 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
