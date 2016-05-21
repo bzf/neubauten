@@ -9,7 +9,7 @@ dependencies:
     - tar -xvzf libspotify-12.1.51-Linux-x86_64-release.tar.gz
     - sudo mv libspotify-12.1.51-Linux-x86_64-release/lib/libspotify* /usr/local/lib
     - sudo mv libspotify-12.1.51-Linux-x86_64-release/include/libspotify /usr/local/include
-    - curl -sSf https://static.rust-lang.org/rustup.sh | sh
+    - curl -sSf https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
     - sudo apt-get install libopenal-dev
     - cp spotify_key_example.c src/spotify_key.c
 

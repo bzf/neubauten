@@ -6,6 +6,7 @@ pub enum NeubautenAction {
   Select,
   PlayNextTrack,
   QueueTrack,
+  TogglePlayback,
 
   MoveDown,
   MoveUp,
@@ -43,6 +44,7 @@ fn next_keyboard_action(event: rustbox::Event) -> NeubautenAction {
         rustbox::Key::Char('>') => NeubautenAction::PlayNextTrack,
         rustbox::Key::Char('e') => NeubautenAction::Quit,
         rustbox::Key::Char('q') => NeubautenAction::QueueTrack,
+        rustbox::Key::Char(' ') => NeubautenAction::TogglePlayback,
         rustbox::Key::Enter => NeubautenAction::Select,
         rustbox::Key::Esc => NeubautenAction::Back,
         _ => NeubautenAction::Noop,
@@ -156,5 +158,15 @@ mod tests {
     let action = next_action(Some(event), None);
 
     assert_eq!(action, NeubautenAction::QueueTrack);
+  }
+
+  #[test]
+  fn it_returns_toggle_playbackon_key_space() {
+    let key = rustbox::Key::Char(' ');;
+    let event = rustbox::Event::KeyEvent(key);
+
+    let action = next_action(Some(event), None);
+
+    assert_eq!(action, NeubautenAction::TogglePlayback);
   }
 }
