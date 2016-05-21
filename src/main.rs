@@ -14,9 +14,11 @@ mod configuration;
 mod list;
 mod action;
 mod view;
+mod command_parser;
 
 use view::{NeubautenView};
-use action::{NeubautenAction};
+use action::{Action};
+use command_parser::{CommandParser};
 
 use std::default::Default;
 use std::sync::{Arc, Mutex};
@@ -92,6 +94,7 @@ fn main() {
 
   let mut playback_queue: Vec<rustify::Track> = Vec::new();
   let mut current_track: Option<PlaybackTrack> = None;
+  let mut command_parser = CommandParser::new();
 
   // Listen to events
   loop {
@@ -104,17 +107,26 @@ fn main() {
     print_status_bar(&current_track, session.is_playing(), &rustbox);
     rustbox.present();
 
-    // Parse the next action
+    let mut action: Action = action::Action::Noop;
     let rustify_event = receiver.try_recv();
-    let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
-    let action = action::next_action(
-      result_to_option(rustbox_event),
-      result_to_option(rustify_event)
-    );
+    if action::next_action(result_to_option(rustify_event)) == action::Action::Noop {
+      let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
+
+      if rustbox_event.is_ok() {
+        let command = command_parser.handle_input(&rustbox_event.unwrap());
+
+        match command {
+          command_parser::Action::NAction(neubauten_action) => {
+            action = neubauten_action;
+          },
+          _ => (),
+        }
+      }
+    }
 
     // Process that action
     match action {
-      NeubautenAction::Select => {
+      Action::Select => {
         match &current_view {
           &NeubautenView::TrackView(playlist_index, ref playlist, ref list) => {
             let track_index = list.get_selected_index();
@@ -139,7 +151,7 @@ fn main() {
           },
         }
       },
-      NeubautenAction::PlayNextTrack => {
+      Action::PlayNextTrack => {
         if !playback_queue.is_empty() {
           let next_track = playback_queue.remove(0);
           session.play_track(&next_track);
@@ -179,19 +191,31 @@ fn main() {
           }
         }
       },
-      NeubautenAction::MoveUp => {
+      Action::MoveUp => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_up(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_up(),
         }
       },
-      NeubautenAction::MoveDown => {
+      Action::MoveDown => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_down(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_down(),
         }
       },
-      NeubautenAction::QueueTrack => {
+      Action::MoveTop => {
+        match &mut current_view {
+          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_top(),
+          &mut NeubautenView::PlaylistView(ref mut list) => list.handle_top(),
+        }
+      },
+      Action::MoveBottom => {
+        match &mut current_view {
+          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_bottom(),
+          &mut NeubautenView::PlaylistView(ref mut list) => list.handle_bottom(),
+        }
+      },
+      Action::QueueTrack => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref playlist, ref mut list) => {
             let track_index = list.get_selected_index();
@@ -202,17 +226,17 @@ fn main() {
           _ => (),
         }
       },
-      NeubautenAction::TogglePlayback => {
+      Action::TogglePlayback => {
         let is_playing = session.is_playing();
         session.toggle_playback(!is_playing);
       },
-      NeubautenAction::Quit => {
+      Action::Quit => {
         break
       },
       _ => (),
     }
 
-    if action != NeubautenAction::Back || views.len() == 0 {
+    if action != Action::Back || views.len() == 0 {
       views.push(current_view);
     }
 
