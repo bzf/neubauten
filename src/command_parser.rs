@@ -17,40 +17,102 @@ pub enum Action {
 
 pub struct CommandParser {
   input_sequence: Vec<char>,
+
+  /// This variable keeps track if we need to read input until we hit either:
+  /// An `Esc` event which would clear the `input_sequence` and return `NoMatch` or
+  /// A `Enter` event which would return the parsed event and clear the input sequence
+  argument: Vec<char>,
+  argument_type: ArgumentType,
+}
+
+#[derive(Clone, PartialEq)]
+enum ArgumentType {
+  FilterArgument,
+  None,
 }
 
 impl CommandParser {
   pub fn new() -> Self {
     return CommandParser {
       input_sequence: Vec::new(),
+      argument: Vec::new(),
+      argument_type: ArgumentType::None,
     };
   }
 
-  pub fn handle_input(&mut self, key_event: &rustbox::Event) -> Action {
+  fn update_argument(&mut self, key_event: &rustbox::Event) {
     match key_event {
       &rustbox::Event::KeyEvent(key) => {
         match key {
-          rustbox::Key::Char(c) => {
-            self.input_sequence.push(c);
-          },
           rustbox::Key::Enter => {
-            self.input_sequence.clear();
-            return Action::NAction(action::Action::Select);
+            self.argument_type = ArgumentType::None;
+            self.argument.clear();
           },
           rustbox::Key::Esc => {
-            if self.input_sequence.is_empty() {
-              return Action::NAction(action::Action::Back);
+            self.argument_type = ArgumentType::None;
+            self.input_sequence.clear();
+          },
+          rustbox::Key::Backspace => {
+            if self.argument.len() > 0 {
+              self.argument.pop();
             } else {
-              self.input_sequence.clear();
+              self.argument_type = ArgumentType::None;
+              self.argument.clear();
             }
+          },
+          rustbox::Key::Char(c) => {
+            self.argument.push(c);
           },
           _ => (),
         }
       },
       _ => (),
     }
+  }
 
-    return self.parse_input_sequence();
+  pub fn handle_input(&mut self, key_event: &rustbox::Event) -> Action {
+    if self.argument_type != ArgumentType::None {
+      let argument: String = self.argument.iter().cloned().collect();
+      let argument_type = self.argument_type.clone();
+
+      self.update_argument(key_event);
+
+      return match argument_type {
+        ArgumentType::FilterArgument => {
+          Action::NAction(action::Action::FilterList(argument))
+        },
+        _ => Action::NoMatch,
+      };
+    } else {
+      match key_event {
+        &rustbox::Event::KeyEvent(key) => {
+          match key {
+            rustbox::Key::Char('/') => {
+              self.argument_type = ArgumentType::FilterArgument;
+              return Action::NAction(action::Action::FilterList("".to_string()));
+            },
+            rustbox::Key::Char(c) => {
+              self.input_sequence.push(c);
+            },
+            rustbox::Key::Enter => {
+              self.input_sequence.clear();
+              return Action::NAction(action::Action::Select);
+            },
+            rustbox::Key::Esc => {
+              if self.input_sequence.is_empty() {
+                return Action::NAction(action::Action::Back);
+              } else {
+                self.input_sequence.clear();
+              }
+            },
+            _ => (),
+          }
+        },
+        _ => (),
+      }
+
+      return self.parse_input_sequence();
+    }
   }
 
   fn parse_input_sequence(&mut self) -> Action {
