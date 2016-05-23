@@ -20,6 +20,8 @@ pub struct ListComponent<T: Display> {
   /// we have more items than available `rows` we need to have some scrolling
   /// mechanic.
   print_from_index: usize,
+
+  current_filter: Option<String>,
 }
 
 impl<T: Display> ListComponent<T> {
@@ -31,29 +33,30 @@ impl<T: Display> ListComponent<T> {
       height: height,
       matching_indexes: Vec::new(),
       print_from_index: 0,
+      current_filter: None,
     };
 
-    list.update_matches(&None);
+    list.update_matches();
 
     return list;
   }
 
-  pub fn update_matches(&mut self, filter: &Option<String>) {
+  fn update_matches(&mut self) {
     self.matching_indexes.clear();
 
     for (index, item) in self.items.iter().enumerate() {
-      if self.does_item_match_filter(&item, filter) {
+      if self.does_item_match_filter(&item, &self.current_filter) {
         self.matching_indexes.push(index);
       }
     }
   }
 
-  pub fn print(&mut self, rustbox: &rustbox::RustBox, x_pos: usize, y_pos: usize, filter: &Option<String>, reset_cursor: bool) {
+  pub fn print(&mut self, rustbox: &rustbox::RustBox, x_pos: usize, y_pos: usize, reset_cursor: bool) {
     if self.items.is_empty() {
       return;
     }
 
-    self.update_matches(filter);
+    self.update_matches();
 
     // TODO: Reset the `cursor_index` if we have a (new) filter
     if reset_cursor {
@@ -87,6 +90,18 @@ impl<T: Display> ListComponent<T> {
 
       index += 1;
     }
+  }
+
+  pub fn set_filter(&mut self, value: &str) {
+    self.cursor_index = 0;
+    self.current_filter = Some(String::from(value));
+    self.update_matches();
+  }
+
+  pub fn clear_filter(&mut self) {
+    self.cursor_index = 0;
+    self.current_filter = None;
+    self.update_matches();
   }
 
   pub fn handle_down(&mut self) {

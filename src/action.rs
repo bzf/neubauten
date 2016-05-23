@@ -8,6 +8,8 @@ pub enum Action {
   QueueTrack,
   TogglePlayback,
 
+  FilterList(String),
+
   MoveBottom,
   MoveDown,
   MoveTop,
