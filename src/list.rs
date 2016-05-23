@@ -99,6 +99,18 @@ impl<T: Display> ListComponent<T> {
     }
   }
 
+  pub fn handle_bottom(&mut self) {
+    for _ in self.cursor_index..self.matching_indexes.len() {
+      self.handle_down();
+    }
+  }
+
+  pub fn handle_top(&mut self) {
+    for _ in 0..self.cursor_index {
+      self.handle_up();
+    }
+  }
+
   pub fn handle_up(&mut self) {
     if self.cursor_index > 0 {
       self.cursor_index -= 1;
@@ -152,54 +164,80 @@ impl<T: Display> ListComponent<T> {
   }
 }
 
-#[test]
-fn defaults_the_cursor_to_zero_index() {
-  let items = vec![ "foo", "bar", "baz" ];
-  let list = ListComponent::new(items, 1, 10);
+#[cfg(test)]
+mod tests {
+  use super::*;
 
-  let index = list.get_selected_index();
+  #[test]
+  fn defaults_the_cursor_to_zero_index() {
+    let items = vec![ "foo", "bar", "baz" ];
+    let list = ListComponent::new(items, 1, 10);
 
-  assert_eq!(index, 0);
-}
+    let index = list.get_selected_index();
 
-#[test]
-fn it_can_move_the_cursor_down() {
-  let items = vec![ "foo", "bar", "baz" ];
+    assert_eq!(index, 0);
+  }
 
-  let mut list = ListComponent::new(items, 1, 10);
-  list.handle_down();
+  #[test]
+  fn it_can_move_the_cursor_down() {
+    let items = vec![ "foo", "bar", "baz" ];
 
-  assert_eq!(list.get_selected_index(), 1);
-}
+    let mut list = ListComponent::new(items, 1, 10);
+    list.handle_down();
 
-#[test]
-fn it_can_move_the_cursor_up() {
-  let items = vec![ "foo", "bar", "baz" ];
+    assert_eq!(list.get_selected_index(), 1);
+  }
 
-  let mut list = ListComponent::new(items, 1, 10);
-  list.handle_down();
-  list.handle_up();
+  #[test]
+  fn it_can_move_the_cursor_up() {
+    let items = vec![ "foo", "bar", "baz" ];
 
-  assert_eq!(list.get_selected_index(), 0);
-}
+    let mut list = ListComponent::new(items, 1, 10);
+    list.handle_down();
+    list.handle_up();
 
-#[test]
-fn it_cant_move_above_the_first_item() {
-  let items = vec![ "foo" ];
-  let mut list = ListComponent::new(items, 1, 10);
+    assert_eq!(list.get_selected_index(), 0);
+  }
 
-  list.handle_up();
+  #[test]
+  fn it_cant_move_above_the_first_item() {
+    let items = vec![ "foo" ];
+    let mut list = ListComponent::new(items, 1, 10);
 
-  assert_eq!(list.get_selected_index(), 0);
-}
+    list.handle_up();
 
-#[test]
-fn it_cant_move_below_the_last_item() {
-  let items = vec![ "foo", "bar" ];
-  let mut list = ListComponent::new(items, 1, 10);
+    assert_eq!(list.get_selected_index(), 0);
+  }
 
-  list.handle_down();
-  list.handle_down();
+  #[test]
+  fn it_cant_move_below_the_last_item() {
+    let items = vec![ "foo", "bar" ];
+    let mut list = ListComponent::new(items, 1, 10);
 
-  assert_eq!(list.get_selected_index(), 1);
+    list.handle_down();
+    list.handle_down();
+
+    assert_eq!(list.get_selected_index(), 1);
+  }
+
+  #[test]
+  fn it_can_select_the_last_item_with_handle_bottom() {
+    let items = vec![ "foo", "bar", "baz" ];
+    let mut list = ListComponent::new(items, 1, 10);
+
+    list.handle_bottom();
+
+    assert_eq!(list.get_selected_index(), 2);
+  }
+
+  #[test]
+  fn it_can_select_the_first_item_with_handle_top() {
+    let items = vec![ "foo", "bar" ];
+    let mut list = ListComponent::new(items, 1, 10);
+
+    list.handle_bottom();
+    list.handle_top();
+
+    assert_eq!(list.get_selected_index(), 0);
+  }
 }
