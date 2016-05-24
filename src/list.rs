@@ -5,7 +5,7 @@ use std;
 use std::fmt::{Display};
 use rustbox::{Color};
 
-pub struct ListComponent<T: Display> {
+pub struct ListComponent<T: Display + Clone> {
   /// Container for all of the items that should be displayed.
   items: Vec<T>,
 
@@ -24,7 +24,7 @@ pub struct ListComponent<T: Display> {
   current_filter: Option<String>,
 }
 
-impl<T: Display> ListComponent<T> {
+impl<T: Display + Clone> ListComponent<T> {
   pub fn new(items: Vec<T>, height: usize, width: usize) -> Self {
     let mut list = ListComponent {
       items: items,
