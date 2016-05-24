@@ -84,7 +84,7 @@ fn main() {
   let playlists = session.playlists();
 
   let initial_view: NeubautenView = NeubautenView::PlaylistView(
-    list::ListComponent::new(playlists, height - 2, width)
+    list::List::new(playlists, height - 2, width)
   );
 
   // Keep around views we have been on when going into another so that we can
@@ -148,7 +148,7 @@ fn main() {
             let playlist = session.playlist(playlist_index as i32).unwrap();
             let tracks = playlist.tracks();
 
-            let next_list = list::ListComponent::new(tracks, height - 2, width - 2);
+            let next_list = list::List::new(tracks, height - 2, width - 2);
             next_view = Some(NeubautenView::TrackView(playlist_index, playlist, next_list));
           },
         }

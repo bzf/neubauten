@@ -5,7 +5,7 @@ use std;
 use std::fmt::{Display};
 use rustbox::{Color};
 
-pub struct ListComponent<T: Display + Clone> {
+pub struct List<T: Display + Clone> {
   /// Container for all of the items that should be displayed.
   items: Vec<T>,
 
@@ -24,9 +24,9 @@ pub struct ListComponent<T: Display + Clone> {
   current_filter: Option<String>,
 }
 
-impl<T: Display + Clone> ListComponent<T> {
+impl<T: Display + Clone> List<T> {
   pub fn new(items: Vec<T>, height: usize, width: usize) -> Self {
-    let mut list = ListComponent {
+    let mut list = List {
       items: items,
       cursor_index: 0,
       width: width,
@@ -186,7 +186,7 @@ mod tests {
   #[test]
   fn defaults_the_cursor_to_zero_index() {
     let items = vec![ "foo", "bar", "baz" ];
-    let list = ListComponent::new(items, 1, 10);
+    let list = List::new(items, 1, 10);
 
     let index = list.get_selected_index();
 
@@ -197,7 +197,7 @@ mod tests {
   fn it_can_move_the_cursor_down() {
     let items = vec![ "foo", "bar", "baz" ];
 
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
     list.handle_down();
 
     assert_eq!(list.get_selected_index(), 1);
@@ -207,7 +207,7 @@ mod tests {
   fn it_can_move_the_cursor_up() {
     let items = vec![ "foo", "bar", "baz" ];
 
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
     list.handle_down();
     list.handle_up();
 
@@ -217,7 +217,7 @@ mod tests {
   #[test]
   fn it_cant_move_above_the_first_item() {
     let items = vec![ "foo" ];
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
 
     list.handle_up();
 
@@ -227,7 +227,7 @@ mod tests {
   #[test]
   fn it_cant_move_below_the_last_item() {
     let items = vec![ "foo", "bar" ];
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
 
     list.handle_down();
     list.handle_down();
@@ -238,7 +238,7 @@ mod tests {
   #[test]
   fn it_can_select_the_last_item_with_handle_bottom() {
     let items = vec![ "foo", "bar", "baz" ];
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
 
     list.handle_bottom();
 
@@ -248,7 +248,7 @@ mod tests {
   #[test]
   fn it_can_select_the_first_item_with_handle_top() {
     let items = vec![ "foo", "bar" ];
-    let mut list = ListComponent::new(items, 1, 10);
+    let mut list = List::new(items, 1, 10);
 
     list.handle_bottom();
     list.handle_top();
