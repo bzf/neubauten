@@ -140,6 +140,10 @@ impl<T: Display + Clone> List<T> {
     return self.matching_indexes[self.cursor_index];
   }
 
+  pub fn get_selected_item(&self) -> T {
+    return self.items[self.get_selected_index()].clone();
+  }
+
   fn is_cursor_out_of_screen(&self) -> bool {
     let screen_starts_at = self.print_from_index;
     let screen_ends_at = screen_starts_at + self.height - 1;
@@ -254,5 +258,15 @@ mod tests {
     list.handle_top();
 
     assert_eq!(list.get_selected_index(), 0);
+  }
+
+  #[test]
+  fn it_returns_a_clone_of_the_object_with_get_selected_item() {
+    let items = vec![ "foo", "bar" ];
+    let list = List::new(items, 1, 10);
+
+    let item = list.get_selected_item();
+
+    assert_eq!(item, "foo");
   }
 }

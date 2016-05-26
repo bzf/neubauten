@@ -35,8 +35,8 @@ fn get_application_key() -> Vec<u8> {
 enum PlaybackTrack {
   QueueTrack(rustify::Track),
 
-  /// Contains `playlist_index`, `track_index` and the actual track
-  PlaylistTrack(usize, usize, rustify::Track),
+  /// Contains the playlist, track and the `track_index`
+  PlaylistTrack(rustify::Playlist, rustify::Track, usize),
 }
 
 fn result_to_option<T, E>(event: Result<T, E>) -> Option<T> {
@@ -130,26 +130,24 @@ fn main() {
     match action {
       Action::Select => {
         match &current_view {
-          &NeubautenView::TrackView(playlist_index, ref playlist, ref list) => {
-            let track_index = list.get_selected_index();
-            let track = playlist.track(track_index as i32).unwrap();
+          &NeubautenView::TrackView(ref playlist, ref list) => {
+            let track = list.get_selected_item();
             session.play_track(&track);
 
             let playlist_track = PlaybackTrack::PlaylistTrack(
-              playlist_index,
-              track_index,
+              playlist.clone(),
               track,
+              list.get_selected_index(),
             );
 
             current_track = Some(playlist_track);
           },
           &NeubautenView::PlaylistView(ref list) => {
-            let playlist_index = list.get_selected_index();
-            let playlist = session.playlist(playlist_index as i32).unwrap();
+            let playlist = list.get_selected_item();
             let tracks = playlist.tracks();
 
             let next_list = list::List::new(tracks, height - 2, width - 2);
-            next_view = Some(NeubautenView::TrackView(playlist_index, playlist, next_list));
+            next_view = Some(NeubautenView::TrackView(playlist, next_list));
           },
         }
       },
@@ -162,8 +160,7 @@ fn main() {
           match current_track {
             Some(t) => {
               match t {
-                PlaybackTrack::PlaylistTrack(playlist_index, track_index, _) => {
-                  let playlist = session.playlist(playlist_index as i32).unwrap();
+                PlaybackTrack::PlaylistTrack(playlist, _, track_index) => {
                   let next_track = playlist.track((track_index + 1) as i32);
 
                   // Pick the next track in the playlist and play that
@@ -173,9 +170,9 @@ fn main() {
 
                       current_track = Some(
                         PlaybackTrack::PlaylistTrack(
-                          playlist_index,
-                          track_index + 1,
+                          playlist.clone(),
                           track,
+                          track_index + 1,
                         )
                       );
                     },
@@ -195,35 +192,33 @@ fn main() {
       },
       Action::MoveUp => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_up(),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.handle_up(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_up(),
         }
       },
       Action::MoveDown => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_down(),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.handle_down(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_down(),
         }
       },
       Action::MoveTop => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_top(),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.handle_top(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_top(),
         }
       },
       Action::MoveBottom => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.handle_bottom(),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.handle_bottom(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_bottom(),
         }
       },
       Action::QueueTrack => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, ref playlist, ref mut list) => {
-            let track_index = list.get_selected_index();
-            let track = playlist.track(track_index as i32).unwrap();
+          &mut NeubautenView::TrackView(_, ref mut list) => {
+            let track = list.get_selected_item();
             playback_queue.push(track);
-            ()
           },
           _ => (),
         }
@@ -234,13 +229,13 @@ fn main() {
       },
       Action::FilterList(ref filter) => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.set_filter(filter),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.set_filter(filter),
           &mut NeubautenView::PlaylistView(ref mut list) => list.set_filter(filter),
         }
       },
       Action::Back => {
         match &mut current_view {
-          &mut NeubautenView::TrackView(_, _, ref mut list) => list.clear_filter(),
+          &mut NeubautenView::TrackView(_, ref mut list) => list.clear_filter(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.clear_filter(),
         }
       },
@@ -269,7 +264,7 @@ fn print_view(view: &mut NeubautenView, rustbox: &rustbox::RustBox) {
     &mut NeubautenView::PlaylistView(ref mut list) => {
       list.print(&rustbox, 0, 0, false);
     },
-    &mut NeubautenView::TrackView(_, _, ref mut list) => {
+    &mut NeubautenView::TrackView(_, ref mut list) => {
       list.print(&rustbox, 0, 0, false);
     }
   }
@@ -289,7 +284,7 @@ fn print_status_bar(current_track: &Option<PlaybackTrack>,
           let seconds: u64 = track.duration().as_secs() % 60;
           format!("Playback: {} [{}:{seconds:>0width$}]", track.to_string(), minutes, seconds=seconds, width=2)
         },
-        &PlaybackTrack::PlaylistTrack(_, _, ref track) => {
+        &PlaybackTrack::PlaylistTrack(_, ref track, _) => {
           let minutes: u64 = track.duration().as_secs() / 60;
           let seconds: u64 = track.duration().as_secs() % 60;
           format!("Playback: {} [{}:{seconds:>0width$}]", track.to_string(), minutes, seconds=seconds, width=2)
