@@ -46,6 +46,28 @@ fn result_to_option<T, E>(event: Result<T, E>) -> Option<T> {
   }
 }
 
+fn get_next_action(receiver: &std::sync::mpsc::Receiver<rustify::Event>,
+                   rustbox: &rustbox::RustBox,
+                   command_parser: &mut command_parser::CommandParser) -> action::Action {
+  let rustify_event = receiver.try_recv();
+  let mut action = action::next_action(result_to_option(rustify_event));
+
+  if action == action::Action::Noop {
+    let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
+
+    if rustbox_event.is_ok() {
+      let command = command_parser.handle_input(&rustbox_event.unwrap());
+
+      match command {
+        command_parser::Action::NAction(neubauten_action) => action = neubauten_action,
+        _ => (),
+      }
+    }
+  }
+
+  return action;
+}
+
 fn main() {
   // Create the configuration directory (if it doesn't exist)
   std::fs::create_dir_all(configuration::root_dir()).unwrap();
@@ -102,22 +124,7 @@ fn main() {
     let mut current_view: NeubautenView = views.pop().unwrap();
     let mut next_view: Option<NeubautenView> = None;
 
-    let mut action: Action = action::Action::Noop;
-    let rustify_event = receiver.try_recv();
-    if action::next_action(result_to_option(rustify_event)) == action::Action::Noop {
-      let rustbox_event = rustbox.peek_event(std::time::Duration::from_millis(100), false);
-
-      if rustbox_event.is_ok() {
-        let command = command_parser.handle_input(&rustbox_event.unwrap());
-
-        match command {
-          command_parser::Action::NAction(neubauten_action) => {
-            action = neubauten_action;
-          },
-          _ => (),
-        }
-      }
-    }
+    let next_action: Action = get_next_action(&receiver, &rustbox, &mut command_parser);
 
     // Update the view
     rustbox.clear();
@@ -127,7 +134,7 @@ fn main() {
     rustbox.present();
 
     // Process that action
-    match action {
+    match next_action {
       Action::Select => {
         match &current_view {
           &NeubautenView::TrackView(ref playlist, ref list) => {
@@ -245,7 +252,7 @@ fn main() {
       _ => (),
     }
 
-    if action != Action::Back || views.len() == 0 {
+    if next_action != Action::Back || views.len() == 0 {
       views.push(current_view);
     }
 
@@ -253,8 +260,8 @@ fn main() {
       views.push(next_view.unwrap());
     }
 
-    if action != action::Action::Noop {
-      last_action = action;
+    if next_action != action::Action::Noop {
+      last_action = next_action;
     }
   }
 }
