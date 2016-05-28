@@ -10,7 +10,6 @@ pub struct List<T: Display + Clone> {
   items: Vec<T>,
 
   cursor_index: usize,
-  width: usize,
   height: usize,
 
   /// Contains indexes of the `items` that matches the `current_filter`
@@ -25,11 +24,10 @@ pub struct List<T: Display + Clone> {
 }
 
 impl<T: Display + Clone> List<T> {
-  pub fn new(items: Vec<T>, height: usize, width: usize) -> Self {
+  pub fn new(items: Vec<T>, height: usize) -> Self {
     let mut list = List {
       items: items,
       cursor_index: 0,
-      width: width,
       height: height,
       matching_indexes: Vec::new(),
       print_from_index: 0,
@@ -75,12 +73,7 @@ impl<T: Display + Clone> List<T> {
     let items_to_display = &items[(self.print_from_index)..(max_index + self.print_from_index)];
 
     for item in items_to_display {
-      let number_of_spaces = self.width - item.to_string().len() - 1;
-      let mut value: String = format!(" {}", item);
-
-      for _ in 0..number_of_spaces {
-        value.push(' ');
-      }
+      let value: String = format!(" {} ", item);
 
       if (index + self.print_from_index) == self.cursor_index {
         rustbox.print(x_pos, y_pos + index, rustbox::RB_BOLD, Color::White, Color::Black, &value);
@@ -190,7 +183,7 @@ mod tests {
   #[test]
   fn defaults_the_cursor_to_zero_index() {
     let items = vec![ "foo", "bar", "baz" ];
-    let list = List::new(items, 1, 10);
+    let list = List::new(items, 1);
 
     let index = list.get_selected_index();
 
@@ -201,7 +194,7 @@ mod tests {
   fn it_can_move_the_cursor_down() {
     let items = vec![ "foo", "bar", "baz" ];
 
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 1);
     list.handle_down();
 
     assert_eq!(list.get_selected_index(), 1);
@@ -211,7 +204,7 @@ mod tests {
   fn it_can_move_the_cursor_up() {
     let items = vec![ "foo", "bar", "baz" ];
 
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 1);
     list.handle_down();
     list.handle_up();
 
@@ -221,7 +214,7 @@ mod tests {
   #[test]
   fn it_cant_move_above_the_first_item() {
     let items = vec![ "foo" ];
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 1);
 
     list.handle_up();
 
@@ -231,7 +224,7 @@ mod tests {
   #[test]
   fn it_cant_move_below_the_last_item() {
     let items = vec![ "foo", "bar" ];
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 1);
 
     list.handle_down();
     list.handle_down();
@@ -242,7 +235,7 @@ mod tests {
   #[test]
   fn it_can_select_the_last_item_with_handle_bottom() {
     let items = vec![ "foo", "bar", "baz" ];
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 1);
 
     list.handle_bottom();
 
@@ -252,7 +245,7 @@ mod tests {
   #[test]
   fn it_can_select_the_first_item_with_handle_top() {
     let items = vec![ "foo", "bar" ];
-    let mut list = List::new(items, 1, 10);
+    let mut list = List::new(items, 10);
 
     list.handle_bottom();
     list.handle_top();
@@ -263,7 +256,7 @@ mod tests {
   #[test]
   fn it_returns_a_clone_of_the_object_with_get_selected_item() {
     let items = vec![ "foo", "bar" ];
-    let list = List::new(items, 1, 10);
+    let list = List::new(items, 10);
 
     let item = list.get_selected_item();
 
