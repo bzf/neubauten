@@ -6,7 +6,7 @@ dependencies = [
  "libc 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustbox 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustify 0.1.0 (git+https://github.com/bzf/rustify.git)",
+ "rustify 0.1.0 (git+https://github.com/bzf/rustify)",
 ]
 
 [[package]]
@@ -157,7 +157,7 @@ dependencies = [
 [[package]]
 name = "rustify"
 version = "0.1.0"
-source = "git+https://github.com/bzf/rustify.git#4de04918d45e08563b7f41483355adb89e218234"
+source = "git+https://github.com/bzf/rustify#8987ad3ed6573488d22279e503848a0168939eab"
 dependencies = [
  "libc 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "openal-rs 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",

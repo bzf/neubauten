@@ -26,8 +26,9 @@ pub struct CommandParser {
 }
 
 #[derive(Clone, PartialEq)]
-enum ArgumentType {
+pub enum ArgumentType {
   FilterArgument,
+  SearchArgument,
   None,
 }
 
@@ -40,34 +41,50 @@ impl CommandParser {
     };
   }
 
-  fn update_argument(&mut self, key_event: &rustbox::Event) {
-    match key_event {
+  /// Takes an `rustbox::Event` and updates the internal `argument` value.
+  ///
+  /// Return wheter or not the event given will end the sequence.
+  fn update_argument(&mut self, key_event: &rustbox::Event) -> bool {
+    return match key_event {
       &rustbox::Event::KeyEvent(key) => {
         match key {
           rustbox::Key::Enter => {
             self.argument_type = ArgumentType::None;
             self.argument.clear();
+            return true;
           },
           rustbox::Key::Esc => {
             self.argument_type = ArgumentType::None;
             self.input_sequence.clear();
+            return true;
           },
           rustbox::Key::Backspace => {
             if self.argument.len() > 0 {
               self.argument.pop();
+              return false;
             } else {
               self.argument_type = ArgumentType::None;
               self.argument.clear();
+              return true;
             }
           },
           rustbox::Key::Char(c) => {
             self.argument.push(c);
+            return false;
           },
-          _ => (),
+          _ => false
         }
       },
-      _ => (),
+      _ => false,
     }
+  }
+
+  pub fn get_argument_type(&self) -> ArgumentType {
+    return self.argument_type.clone();
+  }
+
+  pub fn get_argument(&self) -> String {
+    return self.argument.iter().cloned().collect();
   }
 
   pub fn handle_input(&mut self, key_event: &rustbox::Event) -> Action {
@@ -75,21 +92,30 @@ impl CommandParser {
       let argument: String = self.argument.iter().cloned().collect();
       let argument_type = self.argument_type.clone();
 
-      self.update_argument(key_event);
-
-      return match argument_type {
-        ArgumentType::FilterArgument => {
-          Action::NAction(action::Action::FilterList(argument))
-        },
-        _ => Action::NoMatch,
-      };
+      if self.update_argument(key_event) {
+        return match argument_type {
+          ArgumentType::FilterArgument => {
+            Action::NAction(action::Action::FilterList(argument))
+          },
+          ArgumentType::SearchArgument => {
+            Action::NAction(action::Action::SearchTrack(argument))
+          },
+          _ => Action::NoMatch,
+        };
+      } else {
+        return Action::NoMatch;
+      }
     } else {
       match key_event {
         &rustbox::Event::KeyEvent(key) => {
           match key {
             rustbox::Key::Char('/') => {
               self.argument_type = ArgumentType::FilterArgument;
-              return Action::NAction(action::Action::FilterList("".to_string()));
+              return Action::NoMatch;
+            },
+            rustbox::Key::Char('s') => {
+              self.argument_type = ArgumentType::SearchArgument;
+              return Action::NoMatch;
             },
             rustbox::Key::Char(c) => {
               self.input_sequence.push(c);
