@@ -52,3 +52,20 @@ Then you're finished to start the application!
 ```sh
 cargo run
 ```
+
+# Controls
+
+| Keyboard                 | Action                                       |
+| ------------------------ |:--------------------------------------------:|
+| `gg`                     | Jump to top of list                          |
+| `G`                      | Jump to bottom of list                       |
+| `/`                      | Filter list (confirm with `Enter`)           |
+| `s`                      | Search Spotify tracks (confirm with `Enter`) |
+| `q` (on a track)         | Queue track                                  |
+| `Enter` (on a track)     | Play track                                   |
+| `Enter` (on a pllaylist) | Show tracks in playlist                      |
+| `Space`                  | Toggle playback (play/pause)                 |
+| `j`                      | Move down in the list                        |
+| `k`                      | Move up in the list                          |
+| `e`                      | Closes the application                       |
+| `Esc`                    | Back to previous view                        |
