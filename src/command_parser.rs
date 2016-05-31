@@ -65,7 +65,7 @@ impl CommandParser {
             } else {
               self.argument_type = ArgumentType::None;
               self.argument.clear();
-              return true;
+              return false;
             }
           },
           rustbox::Key::Char(c) => {
