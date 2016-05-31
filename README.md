@@ -11,7 +11,24 @@ When building the application you need to have a Spotify application key (which
 can be found [here](https://devaccount.spotify.com/my-account/keys/). When you
 have one downloaded you need to move that to `src/spotify_key.c`.
 
-When you have that in place you can build the application by running:
+## OS X
+
+Before building you need to install `libspotify`. You can do that by running:
+```sh
+brew install libspotify
+```
+
+You also need to create a symlink from the `libspotify.dylib` to just
+`libspotify` so that the application can find the library when starting *(if
+anyone have better solution that'd be great!)*.
+
+You can do this by running:
+```sh
+ln -s /usr/local/opt/lib/libspotify/libspotify.dylib /usr/local/opt/lib/libspotify/libspotify
+```
+
+After all of that, you can finally build it.
+
 ```sh
 cargo build
 ```
@@ -30,7 +47,7 @@ The JSON is expected to be formatted as:
 }
 ```
 
-You can run the application by running:
+Then you're finished to start the application!
 
 ```sh
 cargo run
