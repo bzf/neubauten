@@ -239,6 +239,10 @@ fn main() {
             let track = list.get_selected_item();
             playback_queue.push(track);
           },
+          &mut NeubautenView::SearchView(_, ref mut list) => {
+            let track = list.get_selected_item();
+            playback_queue.push(track);
+          },
           _ => (),
         }
       },
