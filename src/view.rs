@@ -6,4 +6,6 @@ pub enum NeubautenView {
 
   #[allow(dead_code)]
   TrackView(rustify::Playlist, list::List<rustify::Track>),
+
+  SearchView(rustify::Search, list::List<rustify::Track>),
 }

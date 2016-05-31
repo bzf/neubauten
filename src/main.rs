@@ -37,6 +37,9 @@ enum PlaybackTrack {
 
   /// Contains the playlist, track and the `track_index`
   PlaylistTrack(rustify::Playlist, rustify::Track, usize),
+
+  /// Contains the search, track and the `search_index`
+  SearchTrack(rustify::Track),
 }
 
 fn result_to_option<T, E>(event: Result<T, E>) -> Option<T> {
@@ -115,7 +118,6 @@ fn main() {
   let mut playback_queue: Vec<rustify::Track> = Vec::new();
   let mut current_track: Option<PlaybackTrack> = None;
   let mut command_parser = CommandParser::new();
-  let mut last_action: action::Action = action::Action::Noop;
 
   // Listen to events
   loop {
@@ -128,7 +130,7 @@ fn main() {
     rustbox.clear();
     print_view(&mut current_view, &rustbox);
     print_status_bar(&current_track, session.is_playing(), &rustbox);
-    print_command_bar(&last_action, &rustbox);
+    print_command_bar(&command_parser, &rustbox);
     rustbox.present();
 
     // Process that action
@@ -146,6 +148,14 @@ fn main() {
             );
 
             current_track = Some(playlist_track);
+          },
+          &NeubautenView::SearchView(_, ref list) => {
+            let track = list.get_selected_item();
+            session.play_track(&track);
+
+            let search_track = PlaybackTrack::SearchTrack(track);
+
+            current_track = Some(search_track);
           },
           &NeubautenView::PlaylistView(ref list) => {
             let playlist = list.get_selected_item();
@@ -199,24 +209,28 @@ fn main() {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.handle_up(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_up(),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.handle_up(),
         }
       },
       Action::MoveDown => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.handle_down(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_down(),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.handle_down(),
         }
       },
       Action::MoveTop => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.handle_top(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_top(),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.handle_top(),
         }
       },
       Action::MoveBottom => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.handle_bottom(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.handle_bottom(),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.handle_bottom(),
         }
       },
       Action::QueueTrack => {
@@ -236,12 +250,21 @@ fn main() {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.set_filter(filter),
           &mut NeubautenView::PlaylistView(ref mut list) => list.set_filter(filter),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.set_filter(filter),
         }
+      },
+      Action::SearchTrack(ref query) => {
+        let search_result = session.search(query);
+        let tracks: Vec<rustify::Track> = search_result.tracks();
+
+        let list = list::List::new(tracks, height - 2);
+        next_view = Some(NeubautenView::SearchView(search_result, list));
       },
       Action::Back => {
         match &mut current_view {
           &mut NeubautenView::TrackView(_, ref mut list) => list.clear_filter(),
           &mut NeubautenView::PlaylistView(ref mut list) => list.clear_filter(),
+          &mut NeubautenView::SearchView(_, ref mut list) => list.clear_filter(),
         }
       },
       Action::Quit => {
@@ -257,10 +280,6 @@ fn main() {
     if next_view.is_some() {
       views.push(next_view.unwrap());
     }
-
-    if next_action != action::Action::Noop {
-      last_action = next_action;
-    }
   }
 }
 
@@ -270,6 +289,9 @@ fn print_view(view: &mut NeubautenView, rustbox: &rustbox::RustBox) {
       list.print(&rustbox, 0, 0, false);
     },
     &mut NeubautenView::TrackView(_, ref mut list) => {
+      list.print(&rustbox, 0, 0, false);
+    },
+    &mut NeubautenView::SearchView(_, ref mut list) => {
       list.print(&rustbox, 0, 0, false);
     }
   }
@@ -285,6 +307,11 @@ fn print_status_bar(current_track: &Option<PlaybackTrack>,
     &Some(ref t) => {
       match t {
         &PlaybackTrack::QueueTrack(ref track) => {
+          let minutes: u64 = track.duration().as_secs() / 60;
+          let seconds: u64 = track.duration().as_secs() % 60;
+          format!("Playback: {} [{}:{seconds:>0width$}]", track.to_string(), minutes, seconds=seconds, width=2)
+        },
+        &PlaybackTrack::SearchTrack(ref track) => {
           let minutes: u64 = track.duration().as_secs() / 60;
           let seconds: u64 = track.duration().as_secs() % 60;
           format!("Playback: {} [{}:{seconds:>0width$}]", track.to_string(), minutes, seconds=seconds, width=2)
@@ -312,12 +339,14 @@ fn print_status_bar(current_track: &Option<PlaybackTrack>,
   rustbox.print(0, y_pos, rustbox::RB_BOLD, Color::White, Color::Cyan, &value);
 }
 
-fn print_command_bar(action: &action::Action,
+fn print_command_bar(command_parser: &command_parser::CommandParser,
                      rustbox: &rustbox::RustBox) {
   let y_pos = rustbox.height() - 1;
 
-  let value: String = match action {
-    &action::Action::FilterList(ref string) => format!("Filter: {}", string),
+  let argument = command_parser.get_argument();
+  let value: String = match command_parser.get_argument_type() {
+    command_parser::ArgumentType::FilterArgument => format!("Filter: {}", argument),
+    command_parser::ArgumentType::SearchArgument => format!("Search: {}", argument),
     _ => "".to_string(),
   };
 

@@ -9,6 +9,7 @@ pub enum Action {
   TogglePlayback,
 
   FilterList(String),
+  SearchTrack(String),
 
   MoveBottom,
   MoveDown,
