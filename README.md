@@ -24,7 +24,7 @@ anyone have better solution that'd be great!)*.
 
 You can do this by running:
 ```sh
-ln -s /usr/local/opt/lib/libspotify/libspotify.dylib /usr/local/opt/lib/libspotify/libspotify
+ln -s /usr/local/opt/libspotify/lib/libspotify.dylib /usr/local/opt/libspotify/lib/libspotify
 ```
 
 After all of that, you can finally build it.
